@@ -222,13 +222,13 @@ if __name__ == "__main__":
         "--minTBscore",
         type=int,
         help="lowest cp score for a TB win",
-        default=20000 - 246,  # for SF this is TB_CP - MAX_PLY
+        default=10000 - 128 - 1 - 128,
     )
     parser.add_argument(
         "--maxTBscore",
         type=int,
         help="highest cp score for a TB win: if nonzero, it is assumed that (MAXTBSCORE - |score|) is distance in plies to first zeroing move in(to) TB",
-        default=20000,  # for SF this is TB_CP
+        default=10000 - 128 - 1,
     )
     parser.add_argument(
         "--concurrency",

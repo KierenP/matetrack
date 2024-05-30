@@ -1,6 +1,6 @@
-#  Track the evolution of Stockfish mate finding effectiveness 
+#  Track the evolution of Halogen mate finding effectiveness 
 
-Track the performance of [official Stockfish](https://github.com/official-stockfish/Stockfish)
+Track the performance of [Halogen](https://github.com/KierenP/Halogen)
 in finding the (best) mates within the 6554 mate problems in [`matetrack.epd`](matetrack.epd).
 The raw data is available in [`matetrack1000000.csv`](matetrack1000000.csv),
 and is visualized in the graphs below.

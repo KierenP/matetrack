@@ -3,36 +3,38 @@
 # exit on errors
 set -e
 
+if [ $# -eq 0 ]
+  then
+    echo "Please specify syzygyPath"
+    exit 1
+fi
+
 echo "started at: " $(date)
 
-# the repo displays all the revisions from sf_4 to now, excluding some commits
-sf3=aa2368a6878a867fe63247ee2adf2fde3dfe22be
-firstrev=$sf3
+start=e08e16f959d8d7cbf0980c01c3a05dd225dc4bfc
+firstrev=$start
 lastrev=HEAD
 exclude=exclude_commits.sha
-nnuefile=nn-82215d0fd0df.nnue # a non-embedded master net
+syzygyPath=$1
 
 # the repo uses 1M nodes for each position
 nodes=1000000
 
 # check if we run with the repo values
-[ "$firstrev" = "$sf3" ] && [ "$lastrev" = "HEAD" ] && [ "$nodes" = "1000000" ] && repo=yes || repo=no
+[ "$firstrev" = "$start" ] && [ "$lastrev" = "HEAD" ] && [ "$nodes" = "1000000" ] && repo=yes || repo=no
 
-# clone SF (and download an old, non-embedded master net) as needed
-if [[ ! -e Stockfish ]]; then
-    git clone https://github.com/official-stockfish/Stockfish.git
-fi
-if [[ ! -f $nnuefile ]]; then
-    wget https://tests.stockfishchess.org/api/nn/$nnuefile
+# clone as needed
+if [[ ! -e Halogen ]]; then
+    git clone https://github.com/KierenP/Halogen.git
 fi
 
-# update SF, get a sorted revision list and all the release tags
-cd Stockfish/src
+# update and get a sorted revision list and all the release tags
+cd Halogen/src
 git checkout master >&checkout.log
 git fetch origin >&fetch.log
 git pull >&pull.log
 revs=$(git rev-list --reverse $firstrev^..$lastrev)
-tags=$(git ls-remote --quiet --tags | grep -E "sf_[0-9]+(\.[0-9]+)?")
+tags=$(git ls-remote --quiet --tags | grep -E "v[0-9]+(\.[0-9]+)?")
 cd ../..
 
 # use compact file names for the repo
@@ -59,7 +61,7 @@ fi
 # go over the revision list and obtain missing results if necessary
 for rev in $revs; do
     if ! grep -q "$rev" "$csv"; then
-        cd Stockfish/src
+        cd Halogen/src
         git checkout $rev >&checkout2.log
         epoch=$(git show --pretty=fuller --date=iso-strict $rev | grep 'CommitDate' | awk '{print $NF}')
         tag=$(echo "$tags" | grep $rev | sed 's/.*\///' | sed 's/sf_5\^{}/sf_5/')
@@ -70,13 +72,12 @@ for rev in $revs; do
 
             # compile revision and get binary
             make clean >&clean.log
-            arch=x86-64-avx2
-            # for very old revisions, we need to fall back to x86-64-modern
+            arch=avx2-pext
+            # fallback to 'native' for versions before avx2-pext
             if ! grep -q "$arch" Makefile; then
-                arch=x86-64-modern
+                arch=native
             fi
-            CXXFLAGS='-march=native' make -j ARCH=$arch profile-build >&make.log
-            mv stockfish ../..
+            make -j $arch EXE=../bin/Halogen.exe >&make.log
             cd ../..
 
             # run a matecheck round on this binary, being nice to other processes
@@ -84,7 +85,7 @@ for rev in $revs; do
             if [ $nproc_use -gt 1 ]; then
                 nproc_use=$((3 * nproc_use / 4))
             fi
-            nice python3 matecheck.py --engine ./stockfish --nodes $nodes --concurrency $nproc_use >&$out
+            nice python3 matecheck.py --engine ./Halogen/bin/Halogen.exe --nodes $nodes --concurrency $nproc_use --syzygyPath $syzygyPath >&$out
 
             # collect results for this revision
             total=$(grep "Total FENs:" $out | awk '{print $3}')
