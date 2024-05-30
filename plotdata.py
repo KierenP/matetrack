@@ -100,47 +100,18 @@ class matedata:
         # add release labels
         for i, txt in enumerate(t):
             if txt:
-                shortArrow = txt in ["sf_13", "sf_14.1"]
                 ax.annotate(
                     txt,
                     xy=(d[i], b[i]),
                     xycoords="data",
-                    xytext=(-7, 30 - plotAll * (60 - shortArrow * 5)),
+                    xytext=(-7, 30 - plotAll * 60),
                     textcoords="offset points",
                     arrowprops=dict(arrowstyle="->", color="black"),
                     fontsize=5,
                     weight="bold",
                 )
 
-        # add GOAT labels
-        for dataset in [self.mates, self.bmates]:
-            maxValue = max(dataset)
-            maxIndex = dataset.index(maxValue)
-            usedAxis = ax2 if not plotAll and dataset == self.mates else ax
-            usedAxis.annotate(
-                "GOAT",
-                xy=(
-                    self.date[maxIndex] if plotAll else maxIndex - len(dataset),
-                    dataset[maxIndex],
-                ),
-                xycoords="data",
-                xytext=(-30, 0),
-                textcoords="offset points",
-                arrowprops=dict(arrowstyle="->", color="black"),
-                fontsize=5,
-                weight="bold",
-            )
-            if plotAll:
-                continue
-            usedAxis.axhline(
-                maxValue, color="silver", linestyle="dashed", linewidth=0.2
-            )
-            yt = list(usedAxis.get_yticks())
-            if min(dataset[plotStart:]) > yt[1]:
-                yt.pop(0)
-            usedAxis.set_yticks([t for t in yt if t < maxValue] + [maxValue])
-
-        fig.suptitle("Evolution of SF mate finding effectiveness")
+        fig.suptitle("Evolution of Halogen mate finding effectiveness")
         nodes = self.prefix[len(self.prefix.rstrip("0123456789")) :]
         if nodes.endswith("0" * 9):
             nodes = nodes[:-9] + "G"  #  :)
