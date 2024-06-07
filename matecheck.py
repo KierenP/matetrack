@@ -12,22 +12,22 @@ def chunks(lst, n):
 
 def pv_status(fen, mate, pv):
     # check if the given pv (list of uci moves) leads to checkmate #mate
+    losing_side = 1 if mate > 0 else 0
+    try:
+        board = chess.Board(fen)
+        for ply, move in enumerate(pv):
+            if ply % 2 == losing_side and board.can_claim_draw():
+                return "draw"
+            board.push(chess.Move.from_uci(move))
+    except Exception as ex:
+        return f'error "{ex}"'
     plies_to_checkmate = 2 * mate - 1 if mate > 0 else -2 * mate
     if len(pv) < plies_to_checkmate:
         return "short"
     if len(pv) > plies_to_checkmate:
         return "long"
-    board = chess.Board(fen)
-    losing_side = 1 if mate > 0 else 0
-    try:
-        for ply, move in enumerate(pv):
-            if ply % 2 == losing_side and board.can_claim_draw():
-                return "draw"
-            board.push(chess.Move.from_uci(move))
-        if board.is_checkmate():
-            return "ok"
-    except Exception as ex:
-        return f"error {ex}"
+    if board.is_checkmate():
+        return "ok"
     return "wrong"
 
 
@@ -52,7 +52,13 @@ class Analyser:
             engine.configure({"SyzygyPath": self.syzygyPath})
         for fen, bm in fens:
             board = chess.Board(fen)
-            info = engine.analyse(board, self.limit, game=board)
+            info = {}
+            with engine.analysis(board, self.limit, game=board) as analysis:
+                for line in analysis:
+                    if "score" in line and not (
+                        "upperbound" in line or "lowerbound" in line
+                    ):
+                        info = line
             m = info["score"].pov(board.turn).mate() if "score" in info else None
             pv = [m.uci() for m in info["pv"]] if "pv" in info else []
             result_fens.append((fen, bm, m, pv))
@@ -147,6 +153,9 @@ if __name__ == "__main__":
     )
 
     print(f"\nMatetrack started for {msg} ...")
+    engine = chess.engine.SimpleEngine.popen_uci(args.engine)
+    name = engine.id.get("name", "")
+    engine.quit()
 
     res = []
     futures = []
@@ -181,7 +190,7 @@ if __name__ == "__main__":
                     fullpv += 1
                     if mate == bestmate:
                         fullbestpv += 1
-                elif pvstatus != "short":
+                else:
                     print(
                         f'Found mate #{mate} with PV status "{pvstatus}" for FEN "{fen}" with bm #{bestmate}.'
                     )
@@ -196,15 +205,15 @@ if __name__ == "__main__":
                 wrongmates += 1
 
     print(f"\nUsing {msg}")
+    if name:
+        print("Engine ID:    ", name)
     print("Total fens:   ", numfen)
     print("Found mates:  ", mates)
     print("Best mates:   ", bestmates)
     if mates:
-        print(f"Complete PVs:  {fullpv}/{mates} ({fullpv / mates * 100:.1f}%)")
+        print(f"Complete PVs:  {fullpv}/{mates}")
     if bestmates:
-        print(
-            f"Complete best PVs:  {fullbestpv}/{bestmates} ({fullbestpv / bestmates * 100:.1f}%)"
-        )
+        print(f"Complete best PVs:  {fullbestpv}/{bestmates}")
     if bettermates:
         print("Better mates: ", bettermates)
     if wrongmates:
