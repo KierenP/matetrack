@@ -3,12 +3,19 @@
 # exit on errors
 set -e
 
+if [ $# -eq 0 ]
+  then
+    echo "Please specify syzygyPath"
+    exit 1
+fi
+
 echo "started at: " $(date)
 
 start=e08e16f959d8d7cbf0980c01c3a05dd225dc4bfc
 firstrev=$start
 lastrev=HEAD
 exclude=exclude_commits.sha
+syzygyPath=$1
 
 # the repo uses 1M nodes for each position
 nodes=1000000
@@ -78,7 +85,7 @@ for rev in $revs; do
             if [ $nproc_use -gt 1 ]; then
                 nproc_use=$((3 * nproc_use / 4))
             fi
-            nice python3 matecheck.py --engine ./Halogen/bin/Halogen.exe --nodes $nodes --concurrency $nproc_use >&$out
+            nice python3 matecheck.py --engine ./Halogen/bin/Halogen.exe --nodes $nodes --concurrency $nproc_use --syzygyPath $syzygyPath >&$out
 
             # collect results for this revision
             total=$(grep "Total FENs:" $out | awk '{print $3}')
